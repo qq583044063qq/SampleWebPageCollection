@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <style>
+    * {
+      padding: 0;
+      margin: 0;
+    }
+    .container {
+      height: 100vh;
+      display: flex;
+      background-color:rgb(125, 207, 245)
+    }
+    #waveform {
+      width: 100%;
+      height: 400px;
+      background-color:rgba(240, 234, 234, 0.3);
+      margin: auto;
+    }
+  </style>
+  <link rel="stylesheet" href="./APlayer-1.10.1/APlayer.min.css">
+</head>
+<body>
+  <div class="container">
+    <div id="waveform">
+      <canvas id="waveCanvas" width="500" height="400"></canvas>
+    </div>
+  </div>
+  
+  <div id="aplayer"></div>
+</body>
+<script src="./APlayer-1.10.1/APlayer.min.js"></script>
+<script>
+
+const ap = new APlayer({
+    container: document.getElementById('aplayer'),
+    lrcType: 3,
+    fixed: true,
+    audio: [
+    {
+      name:"Grapefruit Kiss (album version)",
+      artist: "yusukeP / 初音ミク",
+      lrc: './Lrc/Grapefruit Kiss (album version)-yusukeP,初音ミク.lrc',
+      url:'./testAudio/Grapefruit Kiss (album version).mp3',
+      cover: './CoverImg/Grapefruit Kiss (album version).jpg'
+    },
+    {
+      name:"Clear Morning",
+      artist: "小倉唯",
+      lrc: './Lrc/Clear Morning-小倉唯.lrc',
+      url:'./testAudio/Clear Morning-小倉唯.mp3',
+      cover: './CoverImg/Clear Morning-小倉唯.jpg'
+    },
+    {
+      name:"雨のち Sweet＊Drops",
+      artist: "初音ミク",
+      lrc: './Lrc/雨のち Sweet＊Drops.lrc',
+      url:'./testAudio/OSTER project,初音ミク - 雨のち Sweet＊Drops.mp3',
+      cover: './CoverImg/雨のち Sweet＊Drops.jpg'
+    }]
+});
+ap.audio.crossorigin="anonymous";
+let isPlay = false;
+let renderFrameIsRunning = false;
+let AudioContext = window.AudioContext || window.webkitAudioContext;
+
+let ctx;
+let analyser;
+
+// 获取<audio>节点
+  let audio = document.getElementById('aplayer');
+
+// 通过<audio>节点创建音频源
+  let source;
+
+
+
+  let bufferLength;
+  let dataArray;
+
+
+  let canvasElement = document.getElementById("waveCanvas");
+  let canvasContainer = document.getElementById("waveform");
+  let canvasCtx = document.getElementById("waveCanvas").getContext('2d');
+  ap.on('play', e=>{
+  isPlay = true;
+  document.title = ap.list.audios[ap.list.index].name;
+  // 设置文档标题
+  if(!ctx){
+    ctx = new AudioContext();
+  }
+  if(!analyser){
+    analyser = ctx.createAnalyser();
+    analyser.fftSize = 512;
+  }
+  if(!source){
+    source = ctx.createMediaElementSource(ap.audio);
+    // 将音频源关联到分析器
+    source.connect(analyser);
+    // 将分析器关联到输出设备（耳机、扬声器）
+    analyser.connect(ctx.destination);
+  }
+  
+  
+  
+
+  
+  bufferLength = analyser.frequencyBinCount;
+  dataArray = new Uint8Array(bufferLength);
+  analyser.getByteFrequencyData(dataArray);
+  // 设置一下canvas得宽度与其父元素一样
+ canvasElement.width = canvasContainer.clientWidth;
+ canvasElement.height = canvasContainer.clientHeight;
+ if(!renderFrameIsRunning){
+  renderFrame();
+ }
+  
+});
+ap.on('pause', e=>{
+  isPlay = false;
+});
+ap.on('ended', e=> {
+  isPlay = false;
+});
+
+
+
+
+function renderFrame() {
+    renderFrameIsRunning = true;
+    // 每次绘制都记得要重新设置一下画布高宽
+    canvasElement.width = canvasContainer.clientWidth;
+    canvasElement.height = canvasContainer.clientHeight;
+    //每次绘制时清空画布
+    canvasCtx.clearRect(0,0, canvasElement.width, canvasElement.height);
+    // 更新频率数据
+    analyser.getByteFrequencyData(dataArray);
+    // 计算一下每个柱子的宽度
+    let barWidth = canvasElement.width/bufferLength;
+    let HEIGHT = canvasElement.height;
+    // bufferLength表示柱形图中矩形的个数
+    for (let i = 0, x = 0; i < bufferLength; i++) {
+        // 根据频率映射一个矩形高度
+        barHeight = dataArray[i];
+
+        // 根据每个矩形高度映射一个背景色 
+        // let r = barHeight + 25 * (i / bufferLength);
+        // let g = 250 * (i / bufferLength);
+        // let b = 100;
+        // 每个矩形的颜色为了更好的控制过渡这里使用hsl
+        // H取值最大225 根据高度比例来获取对应的颜色值
+        let h =225 - barHeight/HEIGHT * 225;
+        let s = '100%';
+        let l = '50%';
+        // 绘制一个矩形，并填充背景色
+        // canvasCtx.fillStyle = "rgb(" + r + "," + g + "," + b + ")";
+        canvasCtx.fillStyle = "hsl(" + h + "," + s + "," + l + ")";
+        canvasCtx.fillRect(x, HEIGHT  - barHeight, barWidth, barHeight);
+        
+        x += barWidth + 1;
+    }
+    if(!isPlay){
+      renderFrameIsRunning = false;
+      return;
+    }
+    requestAnimationFrame(renderFrame);
+}
+</script>
+</html>
