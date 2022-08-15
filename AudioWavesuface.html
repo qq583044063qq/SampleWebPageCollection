@@ -41,6 +41,27 @@ const ap = new APlayer({
     fixed: true,
     audio: [
     {
+      name:"潮騒の香り",
+      artist: "Key Sounds",
+      lrc: './Lrc/潮騒の香り-Key Sounds Label.lrc',
+      url:'./testAudio/潮騒の香り-Key Sounds Label.mp3',
+      cover: './CoverImg/潮騒の香り-Key Sounds Label.jpg'      
+    },
+    {
+      name:"Rebirth",
+      artist: "Banshi",
+      lrc: './Lrc/-Rebirth--Banshi.lrc',
+      url:'./testAudio/-Rebirth--Banshi.mp3',
+      cover: './CoverImg/-Rebirth--Banshi.jpg'      
+    },
+    {
+      name:"工房都市ツァイス",
+      artist: "Falcom Sound Team J.D.K",
+      lrc: './Lrc/工房都市ツァイス-Falcom Sound Team J.D.K.lrc',
+      url:'./testAudio/工房都市ツァイス-Falcom Sound Team J.D.K.mp3',
+      cover: './CoverImg/工房都市ツァイス-Falcom Sound Team J.D.K.jpg'      
+    },
+    {
       name:"Grapefruit Kiss (album version)",
       artist: "yusukeP / 初音ミク",
       lrc: './Lrc/Grapefruit Kiss (album version)-yusukeP,初音ミク.lrc',
@@ -60,14 +81,8 @@ const ap = new APlayer({
       lrc: './Lrc/雨のち Sweet＊Drops.lrc',
       url:'./testAudio/OSTER project,初音ミク - 雨のち Sweet＊Drops.mp3',
       cover: './CoverImg/雨のち Sweet＊Drops.jpg'
-    },
-    {
-      name:"工房都市ツァイス",
-      artist: "Falcom Sound Team J.D.K",
-      lrc: './Lrc/工房都市ツァイス-Falcom Sound Team J.D.K.lrc',
-      url:'./testAudio/工房都市ツァイス-Falcom Sound Team J.D.K.mp3',
-      cover: './CoverImg/工房都市ツァイス-Falcom Sound Team J.D.K.jpg'      
-    }]
+    }
+    ]
 });
 ap.audio.crossorigin="anonymous";
 let isPlay = false;
@@ -101,7 +116,7 @@ let analyser;
   }
   if(!analyser){
     analyser = ctx.createAnalyser();
-    analyser.fftSize = 512;
+    analyser.fftSize = 512; // fft大小 为2整数次幂 越大精度越高 对性能要求越高
   }
   if(!source){
     source = ctx.createMediaElementSource(ap.audio);
@@ -116,8 +131,10 @@ let analyser;
 
   
   bufferLength = analyser.frequencyBinCount;
-  dataArray = new Uint8Array(bufferLength);
-  analyser.getByteFrequencyData(dataArray);
+  // dataArray = new Uint8Array(bufferLength);
+  // analyser.getByteFrequencyData(dataArray);
+  dataArray = new Float32Array(bufferLength);
+  analyser.getFloatFrequencyData(dataArray);
   // 设置一下canvas得宽度与其父元素一样
  canvasElement.width = canvasContainer.clientWidth;
  canvasElement.height = canvasContainer.clientHeight;
@@ -144,14 +161,17 @@ function renderFrame() {
     //每次绘制时清空画布
     canvasCtx.clearRect(0,0, canvasElement.width, canvasElement.height);
     // 更新频率数据
-    analyser.getByteFrequencyData(dataArray);
+    // analyser.getByteFrequencyData(dataArray);
+    analyser.getFloatFrequencyData(dataArray);
+    // console.log(dataArray);
     // 计算一下每个柱子的宽度
     let barWidth = canvasElement.width/bufferLength;
     let HEIGHT = canvasElement.height;
     // bufferLength表示柱形图中矩形的个数
     for (let i = 0, x = 0; i < bufferLength; i++) {
         // 根据频率映射一个矩形高度
-        barHeight = dataArray[i];
+        // barHeight = dataArray[i];
+        barHeight = (dataArray[i] + 140) * 2; // getFloatFrequencyData() 方法获取的单位为分贝 在数字音频数据中 这些值都是负值 这里加个140进行转换好绘制频谱
 
         // 根据每个矩形高度映射一个背景色 
         // let r = barHeight + 25 * (i / bufferLength);
