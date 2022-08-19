@@ -16,8 +16,17 @@
     }
     #waveform {
       width: 100%;
-      height: 400px;
-      background-color:rgba(240, 234, 234, 0.3);
+      max-width: 850px;
+      height: 600px;
+      background-color:rgba(240, 234, 234, 0.1);
+      margin: auto;
+      background-image: url(Images/Tashkent1.jpg);
+      background-repeat: no-repeat;
+      background-size: cover;
+    }
+    .waveContainer {
+      width: 100%;
+      height: 700px;
       margin: auto;
     }
   </style>
@@ -25,8 +34,17 @@
 </head>
 <body>
   <div class="container">
-    <div id="waveform">
-      <canvas id="waveCanvas" width="500" height="400"></canvas>
+    <div class="waveContainer">
+      <div style="padding: 10px;">
+        <select name="waveType" id="waveTypeSelect">
+          <option value="circle" selected>环形</option>
+          <option value="spectrum">频谱形</option>
+        </select>
+      </div>
+      <div id="waveform">
+        <canvas id="waveCanvas" width="800" height="600"></canvas>
+      </div>
+      
     </div>
   </div>
   
@@ -40,6 +58,20 @@ const ap = new APlayer({
     lrcType: 3,
     fixed: true,
     audio: [
+    {
+      name:"Longing for!",
+      artist: "新田恵海",
+      lrc: './Lrc/Longing for!-新田恵海.lrc',
+      url:'./testAudio/Longing for!-新田恵海.mp3',
+      cover: './CoverImg/Longing for!-新田恵海.jpg'      
+    },
+    {
+      name:"光の道標",
+      artist: "鹿乃",
+      lrc: './Lrc/光の道標-鹿乃.lrc',
+      url:'./testAudio/光の道標-鹿乃.mp3',
+      cover: './CoverImg/光の道標-鹿乃.jpg'      
+    },
     {
       name:"潮騒の香り",
       artist: "Key Sounds",
@@ -107,6 +139,7 @@ let analyser;
   let canvasElement = document.getElementById("waveCanvas");
   let canvasContainer = document.getElementById("waveform");
   let canvasCtx = document.getElementById("waveCanvas").getContext('2d');
+  let selectTypeDom = document.getElementById("waveTypeSelect");
   ap.on('play', e=>{
   isPlay = true;
   document.title = ap.list.audios[ap.list.index].name;
@@ -116,7 +149,7 @@ let analyser;
   }
   if(!analyser){
     analyser = ctx.createAnalyser();
-    analyser.fftSize = 512; // fft大小 为2整数次幂 越大精度越高 对性能要求越高
+    analyser.fftSize = 2048; // fft大小 为2整数次幂 越大精度越高 对性能要求越高
   }
   if(!source){
     source = ctx.createMediaElementSource(ap.audio);
@@ -133,8 +166,8 @@ let analyser;
   bufferLength = analyser.frequencyBinCount;
   // dataArray = new Uint8Array(bufferLength);
   // analyser.getByteFrequencyData(dataArray);
-  dataArray = new Float32Array(bufferLength);
-  analyser.getFloatFrequencyData(dataArray);
+  dataArray = new Uint8Array(bufferLength);
+  analyser.getByteFrequencyData(dataArray);
   // 设置一下canvas得宽度与其父元素一样
  canvasElement.width = canvasContainer.clientWidth;
  canvasElement.height = canvasContainer.clientHeight;
@@ -154,40 +187,96 @@ ap.on('ended', e=> {
 
 
 function renderFrame() {
+    //每次绘制时查看当前选择的绘图类型
+    let currentType = selectTypeDom.options[selectTypeDom.selectedIndex].value;
     renderFrameIsRunning = true;
     // 每次绘制都记得要重新设置一下画布高宽
     canvasElement.width = canvasContainer.clientWidth;
     canvasElement.height = canvasContainer.clientHeight;
     //每次绘制时清空画布
     canvasCtx.clearRect(0,0, canvasElement.width, canvasElement.height);
-    // 更新频率数据
-    // analyser.getByteFrequencyData(dataArray);
-    analyser.getFloatFrequencyData(dataArray);
-    // console.log(dataArray);
-    // 计算一下每个柱子的宽度
-    let barWidth = canvasElement.width/bufferLength;
-    let HEIGHT = canvasElement.height;
-    // bufferLength表示柱形图中矩形的个数
-    for (let i = 0, x = 0; i < bufferLength; i++) {
-        // 根据频率映射一个矩形高度
-        // barHeight = dataArray[i];
-        barHeight = (dataArray[i] + 140) * 2; // getFloatFrequencyData() 方法获取的单位为分贝 在数字音频数据中 这些值都是负值 这里加个140进行转换好绘制频谱
+    switch(currentType){
+      case "spectrum":{
+         // 更新频率数据
+          // analyser.getByteFrequencyData(dataArray);
+          analyser.getByteFrequencyData(dataArray);
+          // console.log(dataArray);
+          // 计算一下每个柱子的宽度
+          let barWidth = canvasElement.width/bufferLength;
+          let HEIGHT = canvasElement.height;
+          //bufferLength表示柱形图中矩形的个数
+          for (let i = 0, x = 0; i < bufferLength; i++) {
+              // 根据频率映射一个矩形高度
+              // barHeight = dataArray[i];
+              // barHeight = (dataArray[i] + 140) * 2; // getFloatFrequencyData() 方法获取的单位为分贝 在数字音频数据中 这些值都是负值 这里加个140进行转换好绘制频谱
+              barHeight = dataArray[i] * 1.5;
+              // 根据每个矩形高度映射一个背景色 
+              // let r = barHeight + 25 * (i / bufferLength);
+              // let g = 250 * (i / bufferLength);
+              // let b = 100;
+              // 每个矩形的颜色为了更好的控制过渡这里使用hsl
+              // H取值最大225 根据高度比例来获取对应的颜色值
+              let h =225 - barHeight/HEIGHT * 225;
+              let s = '100%';
+              let l = '50%';
+              // 绘制一个矩形，并填充背景色
+              // canvasCtx.fillStyle = "rgb(" + r + "," + g + "," + b + ")";
+              canvasCtx.fillStyle = "hsl(" + h + "," + s + "," + l + ")";
+              canvasCtx.fillRect(x, HEIGHT  - barHeight, barWidth, barHeight);
 
-        // 根据每个矩形高度映射一个背景色 
-        // let r = barHeight + 25 * (i / bufferLength);
-        // let g = 250 * (i / bufferLength);
-        // let b = 100;
-        // 每个矩形的颜色为了更好的控制过渡这里使用hsl
-        // H取值最大225 根据高度比例来获取对应的颜色值
-        let h =225 - barHeight/HEIGHT * 225;
-        let s = '100%';
-        let l = '50%';
-        // 绘制一个矩形，并填充背景色
-        // canvasCtx.fillStyle = "rgb(" + r + "," + g + "," + b + ")";
-        canvasCtx.fillStyle = "hsl(" + h + "," + s + "," + l + ")";
-        canvasCtx.fillRect(x, HEIGHT  - barHeight, barWidth, barHeight);
+              x += barWidth + 1;
+          }
+      }
+      break;
+      case "circle":{
+        // 圆形的音频波形
+        // 设置线条颜色
+        let oW = canvasElement.width;
+        let oH = canvasElement.height;
+        let color1 = canvasCtx.createLinearGradient(oW/2, oH/2-10, oW/2, oH/2-150);
+        color1.addColorStop(0, "#1E90FF");
+        color1.addColorStop(.25, "#FF7F50");
+        color1.addColorStop(.5, "#8A2BE2");
+        color1.addColorStop(.75, "#4169E1");
+        color1.addColorStop(1, "#00FFFF");
+        let color2 = canvasCtx.createLinearGradient(0,0,oW,oH);
+        color2.addColorStop(0,"#1E90FF");
+        color2.addColorStop(.25,"#FFD700");
+        color2.addColorStop(.5, "#8A2BE2");
+        color2.addColorStop(.75, "#4169E1");
+        color2.addColorStop(1, "#FF0000");
+        let outPut= new Uint8Array(360);
+        let du = 2; //角度
+        let r = 200; //半径
+        let w = 4; //宽
+        analyser.getByteFrequencyData(outPut);
+        for(let i=0; i<360;i++)
+        {
+          let value = ((outPut[i]))/10;
+          canvasCtx.beginPath();
+          canvasCtx.lineWidth =w;
+          let Rv1 = (r - value);
+          let Rv2 = (r + value);
+          let currentRadius = Math.PI/180*(i*du);
+          // canvasCtx.moveTo((Math.sin((i*du)/180*Math.PI)*r + oW/2), -Math.cos((i*du)/180*Math.PI)*r + oH/2);
+          // canvasCtx.lineTo((Math.sin((i*du)/180*Math.PI)*Rv2 + oW/2), - Math.cos((i*du)/180*Math.PI)*Rv2+ oH/2);
+          canvasCtx.moveTo((Math.sin((i*du)/180*Math.PI)*Rv1 + oW/2), -Math.cos((i*du)/180*Math.PI)*Rv1 + oH/2);
+          canvasCtx.lineTo((Math.sin(currentRadius)*Rv2 + oW/2), - Math.cos(currentRadius)*Rv2+ oH/2);
+          canvasCtx.strokeStyle= color1; // 线条颜色
+          canvasCtx.stroke();
         
-        x += barWidth + 1;
+        }
+        // 设置字体样式
+        canvasCtx.font = "20px 华文楷体";
+        canvasCtx.fillStyle = color2;
+        canvasCtx.textAlign = "center";
+        canvasCtx.textBaseline = "middle";
+        // 绘制文字
+        canvasCtx.fillText(ap.list.audios[ap.list.index].name, oW/2, oH/2);
+      }
+      break;
+      default:
+        break;
     }
     if(!isPlay){
       renderFrameIsRunning = false;
